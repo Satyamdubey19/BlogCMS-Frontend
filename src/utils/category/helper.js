@@ -1,8 +1,19 @@
-const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+function getBaseUrl() {
+  const configuredUrl = (process.env.NEXT_PUBLIC_BASE_URL || "").replace(/\/$/, "");
+
+  if (typeof window !== "undefined") {
+    const currentOrigin = window.location.origin;
+    if (!configuredUrl || configuredUrl === currentOrigin) {
+      return "http://localhost:8000";
+    }
+  }
+
+  return configuredUrl || "http://localhost:8000";
+}
 
 export async function fetchCategories() {
   try {
-    const res = await fetch(`${BASE_URL}/api/categories`, {
+    const res = await fetch(`${getBaseUrl()}/api/categories`, {
       method: "GET",
       cache: "no-store",
     });
