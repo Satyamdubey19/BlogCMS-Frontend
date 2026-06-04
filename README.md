@@ -1,201 +1,303 @@
-# Blog4u
+# Blog CMS Platform
 
-A full-stack blogging platform where users can browse blogs by category, create and manage their own blogs, and interact with content through a clean and minimal interface. Administrators have access to a dedicated dashboard for platform-wide management.
+This repository is the frontend part of a full-stack blogging platform. The backend is located in the sibling folder:
 
----
+```text
+d:\BLOG\blog-cms
+```
 
-## Table of Contents
+The full project contains:
 
-- [Overview](#overview)
-- [User Flow](#user-flow)
-- [Admin Flow](#admin-flow)
-- [Pages and Features](#pages-and-features)
-- [API Reference](#api-reference)
-- [Authentication and Middleware](#authentication-and-middleware)
-- [Tech Stack](#tech-stack)
+- `BlogCMS-Frontend`: Next.js frontend.
+- `blog-cms`: Express and MongoDB backend API.
 
----
+## Features
 
-## Overview
-
-Blog4u allows anyone to browse public blogs without signing in. Users who want to create, edit, or delete their own blogs must register and log in. Administrators log in with admin credentials and are redirected to a separate dashboard where they can manage all content and view platform statistics. The platform is organized around categories, making it easy to discover relevant content.
-
----
-
-## User Flow
-
-### Public Access (No Login Required)
-
-- Landing page displays blog categories as cards.
-- Clicking a category filters and shows blogs belonging to that category.
-- Individual blog posts can be read without authentication.
-- The About page and other legal sub-pages (Privacy Policy, Terms of Service, etc.) are accessible to everyone.
-
-### Authentication
-
-- If a user tries to create a blog, edit a blog, delete a blog, or view their profile, they are redirected to the login page.
-- New users must register first via the Sign Up page.
-- Existing users can log in directly via the Sign In page.
-- Users with admin credentials are redirected to the Admin Dashboard upon successful login instead of the regular home page.
-
-### Authenticated User Access
-
-Once logged in, the following features become available through the header navigation:
-
-**View Profile**
-- Accessible via the profile icon in the header.
-- Displays user details fetched from `/api/profile`.
-- Option to log out from the profile page.
-
-**Create Blog**
-- Accessible via the Create button in the header.
-- Users fill in the title, category, tags, cover image, visibility (public or private), and content.
-- Content is written using a rich text editor (Tiptap) that supports bold, italic, headings, lists, and blockquotes.
-- On submission, the blog is sent to the API and the user is redirected to their dashboard.
-
-**View My Blogs**
-- Shows all blogs created by the logged-in user.
-- Each blog card has Edit and Delete options.
-
-**Edit Blog**
-- Opens the same form as Create Blog but pre-filled with existing blog data.
-- Submits an update request to the API.
-
-**Delete Blog**
-- Deletes the blog after confirmation.
-- Sends a delete request to the API.
-
----
-
-## Admin Flow
-
-### Login and Redirect
-
-- Admin credentials are entered on the same Sign In page used by regular users.
-- On successful login, the server identifies the admin role from the JWT token.
-- The middleware redirects the admin directly to `/admin/dashboard` instead of the regular home page.
-- All routes under `/admin/*` are protected and accessible only to users with the admin role.
-
-### Admin Dashboard
-
-The dashboard is the central view for the admin. It is composed of the following sections:
-
-**Stats Overview**
-
-- On page load, the dashboard fetches data from `/api/blogs/stats`.
-- The stats section displays two key metrics as prominent cards: total number of registered users and total number of blogs on the platform.
-
-**Visual Blog Activity Chart**
-
-- Below the stats cards, a bar chart renders the blog data fetched from `/api/blogs`.
-- The chart visualizes blog volume over time or by category, giving the admin a quick visual understanding of platform activity.
-- The chart updates based on the blog data available at load time.
-
-**Top 4 Categories**
-
-- Also derived from the `/api/blogs` data, the dashboard displays the four categories with the highest number of blogs.
-- Each category is shown with its name and blog count, ranked from highest to lowest.
-
-### Admin Sidebar
-
-The sidebar is present on all admin pages and provides the following navigation options:
-
-- Dashboard (link to `/admin/dashboard`)
-- All Blogs (link to `/admin/blogs`)
-- Create New Blog (button that navigates to the blog creation form)
-- Logout (button that clears the session cookie and redirects to the Sign In page)
-
-### Manage All Blogs
-
-- Accessible via the All Blogs option in the sidebar, routed at `/admin/blogs`.
-- Displays every blog on the platform, including both public and private blogs from all users.
-- Each blog entry shows the title, author, category, visibility status, and creation date.
-- The admin can edit any blog by clicking the Edit option, which opens the pre-filled blog form and submits a PUT request to `/api/blogs/:id`.
-- The admin can delete any blog by clicking the Delete option, which sends a DELETE request to `/api/blogs/:id` after confirmation.
-
-### Create New Blog (Admin)
-
-- Accessible from the Create New Blog button in the sidebar.
-- Uses the same rich text editor form as regular users.
-- The blog is created under the admin's account and submitted via POST to `/api/blogs`.
-
-### Logout
-
-- Available directly in the sidebar on all admin pages.
-- Clears the HTTP-only authentication cookie and redirects the admin to the Sign In page.
-
----
-
-## Pages and Features
-
-| Page | Route | Access | Description |
-|---|---|---|---|
-| Home / Category Listing | / | Public | Shows category cards, clicking filters blogs |
-| Blog Detail | /blog/:id | Public | Full blog post view |
-| About | /about | Public | Information about the platform |
-| Legal (sub-pages) | /legal/* | Public | Privacy policy, terms, etc. |
-| Sign In | /auth/login | Public | Login form for users and admins |
-| Sign Up | /auth/register | Public | Registration form |
-| Create Blog | /user/blog/create | Protected (user) | Rich text editor form to write and publish |
-| View My Blogs | /user/blogs | Protected (user) | Lists user's blogs with edit and delete options |
-| Edit Blog | /user/blog/edit/:id | Protected (user) | Pre-filled form to update an existing blog |
-| Profile | /user/profile | Protected (user) | User info and logout |
-| Admin Dashboard | /admin/dashboard | Admin only | Stats, bar chart, and top 4 categories |
-| Admin All Blogs | /admin/blogs | Admin only | View, edit, and delete all blogs on the platform |
-
----
-
-## API Reference
-
-### Auth
-
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| POST | /auth/register | No | Register a new user |
-| POST | /auth/login | No | Login and receive token. Admins are redirected to /admin/dashboard |
-
-### Blogs
-
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| GET | /api/blogs | No | Fetch all public blogs (supports category filter). Admin receives all blogs including private |
-| GET | /api/blogs/:id | No | Fetch a single blog by ID |
-| POST | /api/blogs | Yes | Create a new blog |
-| PUT | /api/blogs/:id | Yes | Update an existing blog. Admin can update any blog |
-| DELETE | /api/blogs/:id | Yes | Delete a blog. Admin can delete any blog |
-| GET | /api/blogs/stats | Yes (admin) | Returns total user count and total blog count for the dashboard |
-
-### Categories
-
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| GET | /api/category | No | Fetch all categories |
-
-### Profile
-
-| Method | Endpoint | Auth Required | Description |
-|---|---|---|---|
-| GET | /api/profile | Yes | Get the logged-in user's profile |
-
----
-
-## Authentication and Middleware
-
-- Authentication is token-based. The token is stored in an HTTP-only cookie.
-- On login, the server decodes the JWT to check the user role.
-- If the role is admin, the response redirects to `/admin/dashboard`. Otherwise it redirects to the regular home page.
-- Middleware protects the following route groups:
-  - `/user/*` — accessible only to authenticated users with any valid role.
-  - `/admin/*` — accessible only to users with the admin role. Any other authenticated user attempting to access admin routes is redirected to the home page.
-- Public routes are open and require no token.
-- If an unauthenticated user tries to access a protected route, they are redirected to the login page.
-
----
+- User registration and login.
+- Blog discovery with search, category filters, tag filters, and pagination.
+- Blog detail pages with likes and comments.
+- Author workflows for creating, editing, deleting, saving drafts, and publishing blogs.
+- Responsive reading experience.
+- Admin dashboard and post management screens.
+- Cloudinary-backed blog image uploads through the backend.
 
 ## Tech Stack
 
-- **Frontend**: Next.js, Tailwind CSS, Tiptap (rich text editor), FontAwesome
-- **Auth**: Cookie-based JWT authentication with role-based route protection
-- **API Communication**: REST via Fetch API with FormData for file uploads
-- **Middleware**: Route-level protection for user and admin sections
-- **Admin Charts**: Bar chart rendered on the admin dashboard using blog data from the REST API
+Frontend:
+
+- Next.js 16
+- React 19
+- Tailwind CSS
+- TipTap rich text editor
+- Font Awesome icons
+- shadcn/Radix UI dependencies
+
+Backend:
+
+- Node.js
+- Express.js
+- MongoDB and Mongoose
+- JWT authentication
+- Multer and Cloudinary
+- bcryptjs
+
+## Folder Structure
+
+```text
+BlogCMS-Frontend
+├── components
+│   ├── Buttons
+│   ├── Card
+│   ├── Header
+│   ├── Footer
+│   └── admin
+├── public
+│   └── assets
+├── src
+│   ├── app
+│   │   ├── admin
+│   │   ├── auth
+│   │   ├── user
+│   │   └── api
+│   └── utils
+│       ├── auth
+│       ├── blog
+│       ├── category
+│       └── profile
+├── package.json
+└── next.config.mjs
+```
+
+## Full Project Setup
+
+Use two terminals: one for backend and one for frontend.
+
+## Backend Setup
+
+Go to the backend:
+
+```bash
+cd d:\BLOG\blog-cms
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create `.env` from the example:
+
+```bash
+copy .env.example .env
+```
+
+Backend `.env`:
+
+```env
+PORT=8000
+MONGODB_URI=mongodb://127.0.0.1:27017/blog-cms
+JWT_SECRET=replace-with-a-long-random-secret
+CLOUD_NAME=your-cloudinary-cloud-name
+API_KEY=your-cloudinary-api-key
+API_SECRET=your-cloudinary-api-secret
+```
+
+For MongoDB Atlas:
+
+```env
+MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@cluster-name.mongodb.net/blog-cms
+```
+
+Start backend:
+
+```bash
+npm start
+```
+
+Backend URL:
+
+```text
+http://localhost:8000
+```
+
+## Frontend Setup
+
+Go to the frontend:
+
+```bash
+cd d:\BLOG\BlogCMS-Frontend
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create `.env.local`:
+
+```env
+NEXT_PUBLIC_BASE_URL=http://localhost:8000
+```
+
+Start frontend:
+
+```bash
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## API Summary
+
+Backend routes are prefixed with `/api`.
+
+### Auth
+
+| Method | Route | Description |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Register user |
+| POST | `/api/auth/login` | Login user |
+| GET | `/api/auth/profile` | Get logged-in user profile |
+
+### Blogs
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/blogs` | Get published blogs |
+| GET | `/api/blogs/mine` | Get current user's blogs and drafts |
+| GET | `/api/blogs/:id` | Get blog by ID or slug |
+| POST | `/api/blogs` | Create blog |
+| PUT | `/api/blogs/:id` | Update blog |
+| DELETE | `/api/blogs/:id` | Soft delete blog |
+| GET | `/api/blogs/:id/comments` | Get blog comments |
+| POST | `/api/blogs/:id/comments` | Add comment |
+| DELETE | `/api/blogs/:id/comments/:commentId` | Delete comment |
+| POST | `/api/blogs/:id/likes` | Toggle like |
+
+Blog filters:
+
+```text
+/api/blogs?search=react&category=Technology&tag=nextjs&page=1&limit=10
+```
+
+### Categories
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/api/categories` | Get categories |
+| POST | `/api/categories` | Create category |
+| DELETE | `/api/categories/:id` | Delete category |
+
+## Frontend Pages
+
+| Route | Description |
+| --- | --- |
+| `/user` | Browse and discover published blogs |
+| `/user/[slug]` | Read a blog, like it, and comment |
+| `/user/createBlog` | Create a blog or save draft |
+| `/user/viewBlog` | Manage current user's blogs |
+| `/auth/login` | Login |
+| `/auth/register` | Register |
+| `/admin/dashboard` | Admin dashboard |
+| `/admin/posts` | Admin posts |
+| `/admin/settings` | Admin settings |
+
+## Important Frontend Files
+
+```text
+src/utils/auth/helper.js
+src/utils/blog/helper.js
+src/utils/category/helper.js
+components/Card/CreateBlogForm.jsx
+components/Card/BlogCard.jsx
+components/Card/BlogDetail.jsx
+components/Buttons/SearchFilter.jsx
+```
+
+## Blog Create Form Fields
+
+The frontend sends blog create/update requests as `multipart/form-data`.
+
+Fields:
+
+```text
+title
+slug
+content
+category
+tags
+isPublic
+image
+```
+
+Use:
+
+- `isPublic=true` to publish.
+- `isPublic=false` to save as draft.
+
+## Scripts
+
+Frontend:
+
+```bash
+npm run dev
+npm run build
+npm start
+npm run lint
+```
+
+Backend:
+
+```bash
+npm start
+```
+
+## Validation
+
+Build frontend:
+
+```bash
+cd d:\BLOG\BlogCMS-Frontend
+npm run build
+```
+
+Check backend syntax:
+
+```bash
+cd d:\BLOG\blog-cms
+node --check server.js
+```
+
+Note: `npm run lint` currently needs an ESLint 9 flat config file, such as `eslint.config.js`.
+
+## Troubleshooting
+
+If images do not upload:
+
+- Check Cloudinary env variables in `blog-cms/.env`.
+- Confirm image is JPEG, PNG, or WEBP.
+- Confirm image size is below 5 MB.
+
+If blogs do not load:
+
+- Start backend first.
+- Check `NEXT_PUBLIC_BASE_URL=http://localhost:8000`.
+- Restart frontend after changing `.env.local`.
+
+If login-protected actions fail:
+
+- Login again.
+- Check that the browser has a `token` cookie.
+- Confirm backend `JWT_SECRET` is set.
+
+If MongoDB does not connect:
+
+- Check `MONGODB_URI`.
+- Start local MongoDB or configure MongoDB Atlas network access.
+

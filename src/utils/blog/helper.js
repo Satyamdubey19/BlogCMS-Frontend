@@ -1,13 +1,31 @@
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000";
 
-const token= typeof window !== "undefined" ? document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1] : null
+export function getAuthToken() {
+  return typeof window !== "undefined"
+    ? document.cookie.split(";").find((c) => c.trim().startsWith("token="))?.split("=")[1]
+    : null;
+}
 
-export async function getBlogs(category = "", page = 1) {
-  const url = category ? `${BASE_URL}/api/blogs?category=${category}&page=${page}` : `${BASE_URL}/api/blogs?page=${page}`;
+function buildQuery(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") query.set(key, value);
+  });
+  return query.toString();
+}
 
-  // const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+async function parseResponse(res, fallback) {
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message ?? fallback);
+  return data;
+}
 
-  const res = await fetch(url, {
+export async function getBlogs({ category = "", tag = "", search = "", page = 1, mine = false } = {}) {
+  const query = buildQuery({ category, tag, search, page });
+  const path = mine ? "/api/blogs/mine" : "/api/blogs";
+  const token = getAuthToken();
+
+  const res = await fetch(`${BASE_URL}${path}?${query}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -15,13 +33,18 @@ export async function getBlogs(category = "", page = 1) {
     },
   });
 
-  const data = await res.json();
+  return parseResponse(res, "Failed to fetch blogs");
+}
 
-  if (!res.ok) {
-    throw new Error(data?.message ?? "Failed to fetch blogs");
-  }
-
-  return data;
+export async function getBlog(blogIdOrSlug) {
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/blogs/${blogIdOrSlug}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+  return parseResponse(res, "Failed to fetch blog");
 }
 
 export async function getStats() {
@@ -31,7 +54,7 @@ export async function getStats() {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(getAuthToken() && { Authorization: `Bearer ${getAuthToken()}` }),
     },
   });
 
@@ -47,6 +70,7 @@ export async function getStats() {
 }
 
 export async function deleteBlog(blogId) {
+  const token = getAuthToken();
 
   const res = await fetch(`${BASE_URL}/api/blogs/${blogId}`, {
     method: "DELETE",
@@ -62,7 +86,7 @@ export async function deleteBlog(blogId) {
 }
 
 export async function createBlog(formData) {
-  const token= typeof window !== "undefined" ? document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1] : null
+  const token = getAuthToken();
   const res = await fetch(`${BASE_URL}/api/blogs`, {
     method: "POST",
     headers: {
@@ -82,7 +106,7 @@ export async function createBlog(formData) {
 }
 
 export async function updateBlog(blogId, formData) {
-  const token = document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1]
+  const token = getAuthToken();
 
   const res = await fetch(`${BASE_URL}/api/blogs/${blogId}`, {
     method: "PUT",
@@ -95,4 +119,34 @@ export async function updateBlog(blogId, formData) {
   const data = await res.json();
   if (!res.ok) throw new Error(data?.message ?? "Failed to update blog");
   return data;
+}
+
+export async function toggleLike(blogId) {
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/blogs/${blogId}/likes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  });
+  return parseResponse(res, "Failed to update like");
+}
+
+export async function getComments(blogId) {
+  const res = await fetch(`${BASE_URL}/api/blogs/${blogId}/comments`);
+  return parseResponse(res, "Failed to fetch comments");
+}
+
+export async function addComment(blogId, content) {
+  const token = getAuthToken();
+  const res = await fetch(`${BASE_URL}/api/blogs/${blogId}/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: JSON.stringify({ content }),
+  });
+  return parseResponse(res, "Failed to add comment");
 }

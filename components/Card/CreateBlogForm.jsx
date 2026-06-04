@@ -41,11 +41,11 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
   })
 
   useEffect(() => {
-    if (!propBlogId) return
+    if (!blogId) return
     const fetchBlog = async () => {
       try {
         const token = document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1]
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/blogs/${propBlogId}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"}/api/blogs/${blogId}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await res.json()
@@ -67,7 +67,7 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
       }
     }
     fetchBlog()
-  }, [propBlogId, editor])
+  }, [blogId, editor])
 
   const showSuccess = (msg) => {
     setSuccessMsg(msg)
@@ -102,7 +102,7 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
     getCategories()
   }, [])
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (publish = form.isPublic) => {
     setError(null)
     setLoading(true)
     const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -114,6 +114,7 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
     }
     try {
       const tagsArray = form.tags;
+      const nextIsPublic = !!publish;
 
       if (isEdit) {
         const formData = new FormData()
@@ -122,20 +123,21 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
         formData.append("content", form.content)
         formData.append("category", form.category)
         formData.append("tags", JSON.stringify(tagsArray))
-        formData.append("isPublic", form.isPublic)
+        formData.append("isPublic", nextIsPublic)
         if (form.image) formData.append("image", form.image)
         await updateBlog(blogId, formData)
         showSuccess("Your blog has been updated successfully.")
       } else {
         const formData = new FormData()
         formData.append("title", form.title)
+        formData.append("slug", form.slug)
         formData.append("content", form.content)
         formData.append("category", form.category)
         formData.append("tags", JSON.stringify(tagsArray))
-        formData.append("isPublic", form.isPublic)
+        formData.append("isPublic", nextIsPublic)
         if (form.image) formData.append("image", form.image)
         await createBlog(formData)
-        showSuccess("Your blog has been published successfully.")
+        showSuccess(nextIsPublic ? "Your blog has been published successfully." : "Your draft has been saved successfully.")
       }
     } catch (err) {
       setError(err.message)
@@ -162,7 +164,7 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
         <input
           type="text"
           placeholder="Your blog title..."
-          maxLength={20}
+          maxLength={120}
           value={form.title}
           onChange={e => {
             const title = e.target.value;
@@ -351,7 +353,7 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
               <div className={`w-8 h-4 rounded-full transition-colors relative ${form.isPublic ? "bg-indigo-500" : "bg-white/20"}`}>
                 <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${form.isPublic ? "left-4" : "left-0.5"}`} />
               </div>
-              {form.isPublic ? "Public — everyone can see this" : "Private — only you can see this"}
+              {form.isPublic ? "Public - everyone can see this" : "Draft - only you can see this"}
             </button>
           </div>
 
@@ -385,21 +387,34 @@ export default function CreateBlogForm({ blogId: propBlogId, onSuccess, customCl
           </div>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !form.title || !form.slug || !form.content}
-          className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2
-            ${!loading && form.title && form.slug && form.content
-              ? "bg-indigo-600 text-white hover:bg-indigo-500"
-              : "bg-white/5 text-white/30 cursor-not-allowed"
-            }`}
-        >
-          <FontAwesomeIcon icon={faPaperPlane} className="h-3.5 w-3.5" />
-          {loading
-            ? (isEdit ? "Updating..." : "Publishing...")
-            : (isEdit ? "Update Blog" : "Publish Blog")
-          }
-        </button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={loading || !form.title || !form.slug || !form.content || !form.category}
+            className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2
+              ${!loading && form.title && form.slug && form.content && form.category
+                ? "bg-white/10 text-white hover:bg-white/15"
+                : "bg-white/5 text-white/30 cursor-not-allowed"
+              }`}
+          >
+            Save Draft
+          </button>
+          <button
+            onClick={() => handleSubmit(true)}
+            disabled={loading || !form.title || !form.slug || !form.content || !form.category}
+            className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2
+              ${!loading && form.title && form.slug && form.content && form.category
+                ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                : "bg-white/5 text-white/30 cursor-not-allowed"
+              }`}
+          >
+            <FontAwesomeIcon icon={faPaperPlane} className="h-3.5 w-3.5" />
+            {loading
+              ? (isEdit ? "Updating..." : "Publishing...")
+              : (isEdit ? "Update and Publish" : "Publish Blog")
+            }
+          </button>
+        </div>
       </div>
     </div>
   )

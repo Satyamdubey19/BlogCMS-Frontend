@@ -2,10 +2,10 @@
 import Image from "next/image"
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { getBlogs, deleteBlog } from "@/utils/blog/helper"
+import { getBlogs, deleteBlog, toggleLike } from "@/utils/blog/helper"
 import EmptyCard from "./EmptyCard"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faPen, faTrash } from "@fortawesome/free-solid-svg-icons"
+import { faHeart, faMessage, faPen, faTrash } from "@fortawesome/free-solid-svg-icons"
 import SuccessMessageCard from "./SuccessMessageCard"
 import Loading from "./Loading"
 import CreateBlogForm from "./CreateBlogForm"
@@ -50,7 +50,7 @@ function DeleteConfirmCard({ onConfirm, onCancel }) {
     )
 }
 
-export default function BlogCard({ isRedirected = false }) {
+export default function BlogCard({ isRedirected = false, mine = false }) {
     const [showFull, setShowFull] = useState(null)
     const [deleteId, setDeleteId] = useState(null)
     const [successMsg, setSuccessMsg] = useState("")
@@ -62,8 +62,9 @@ export default function BlogCard({ isRedirected = false }) {
     const token = typeof window !== "undefined" ? document.cookie.split(';').find(c => c.trim().startsWith('token='))?.split('=')[1] : null
     const isLoggedIn = !!token
 
-    const category = searchParams.get("category")?.toLowerCase() || ""
-    const userId = searchParams.get("userId") || ""
+    const category = searchParams.get("category") || ""
+    const search = searchParams.get("search") || ""
+    const tag = searchParams.get("tag") || ""
     const [editBlogId, setEditBlogId] = useState(null)
 
     const [page, setPage] = useState(1)
@@ -80,23 +81,15 @@ export default function BlogCard({ isRedirected = false }) {
         setPage(1)
         setBlogs([])
         fetchData(1)
-    }, [category, userId])
+    }, [category, search, tag, mine])
 
     const fetchData = async (pageNum) => {
         try {
             pageNum === 1 ? setLoading(true) : setLoadingMore(true)
-            const data = await getBlogs(category, pageNum)
+            const data = await getBlogs({ category, search, tag, page: pageNum, mine })
             const allBlogs = data.blogs || []
             setTotalPages(data.pagination?.pages || 1)
-            const publicBlogs = allBlogs.filter(blog => blog?.isPublic === true || blog?.isPublic === undefined)
-            const filtered = userId ? publicBlogs.filter(b => b?.author?._id === userId) : publicBlogs
-            setBlogs(prev => pageNum === 1 ? filtered : [...prev, ...filtered])
-
-            if (userId) {
-                setTotalPages(1)
-            } else {
-                setTotalPages(data.pagination?.pages || 1)
-            }
+            setBlogs(prev => pageNum === 1 ? allBlogs : [...prev, ...allBlogs])
         } catch (err) {
             console.log(err)
             if (pageNum === 1) setBlogs([])
@@ -149,6 +142,24 @@ export default function BlogCard({ isRedirected = false }) {
             console.log(err)
         } finally {
             setDeleteId(null)
+        }
+    }
+
+    const handleLike = async (e, blogId) => {
+        e.stopPropagation()
+        if (!isLoggedIn) {
+            router.push("/auth/login")
+            return
+        }
+        try {
+            const result = await toggleLike(blogId)
+            setBlogs(prev => prev.map(blog => blog._id === blogId ? {
+                ...blog,
+                likedByMe: result.liked,
+                likeCount: result.likeCount,
+            } : blog))
+        } catch (err) {
+            console.log(err)
         }
     }
 
@@ -228,12 +239,12 @@ export default function BlogCard({ isRedirected = false }) {
                                     <span className="text-xs text-indigo-400 font-medium">{blog.category?.title}</span>
                                 </div>
 
-                                {userId && (
+                                {mine && (
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <button onClick={() => handleEdit(blog._id)} className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 transition-colors cursor-pointer">
+                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(blog._id) }} className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center hover:bg-indigo-100 transition-colors cursor-pointer">
                                             <FontAwesomeIcon icon={faPen} className="text-indigo-400 text-xs" />
                                         </button>
-                                        <button onClick={() => setDeleteId(blog._id)} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors cursor-pointer">
+                                        <button onClick={(e) => { e.stopPropagation(); setDeleteId(blog._id) }} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center hover:bg-red-100 transition-colors cursor-pointer">
                                             <FontAwesomeIcon icon={faTrash} className="text-red-400 text-xs" />
                                         </button>
                                     </div>
@@ -242,6 +253,11 @@ export default function BlogCard({ isRedirected = false }) {
 
                             <div className="px-5 py-4 flex flex-col flex-1">
                                 <h2 className="font-bold text-sm text-slate-800 leading-snug mb-2">{blog.title}</h2>
+                                {mine && (
+                                    <span className={`self-start mb-2 text-[11px] font-semibold px-2 py-0.5 rounded-full ${blog.isPublic ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>
+                                        {blog.isPublic ? "Published" : "Draft"}
+                                    </span>
+                                )}
 
                                 <div
                                     className="text-sm text-slate-500 leading-relaxed font-light flex-1 prose prose-sm max-w-none"
@@ -260,12 +276,26 @@ export default function BlogCard({ isRedirected = false }) {
 
                                     {/* ADDED: Read More button for dynamic route */}
                                     <button
-                                        onClick={() => handleReadBlog(blog)}
+                                        onClick={(e) => { e.stopPropagation(); handleReadBlog(blog) }}
                                         className="self-start text-xs cursor-pointer font-medium text-purple-500 hover:text-purple-700 tracking-widest uppercase transition-colors duration-200"
                                     >
                                         Read More
                                     </button>
                                 </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 px-5 pb-4 text-xs text-slate-500">
+                                <button
+                                    onClick={(e) => handleLike(e, blog._id)}
+                                    className={`flex items-center gap-1.5 hover:text-rose-500 transition-colors ${blog.likedByMe ? "text-rose-500" : ""}`}
+                                >
+                                    <FontAwesomeIcon icon={faHeart} className="text-xs" />
+                                    {blog.likeCount || 0}
+                                </button>
+                                <span className="flex items-center gap-1.5">
+                                    <FontAwesomeIcon icon={faMessage} className="text-xs" />
+                                    {blog.commentCount || 0}
+                                </span>
                             </div>
 
                             {blog.tags?.length > 0 && (

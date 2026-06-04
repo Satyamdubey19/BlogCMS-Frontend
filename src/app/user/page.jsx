@@ -3,6 +3,7 @@ import LoginButton from "../../../components/Buttons/LoginButton";
 import BlogCard from "../../../components/Card/BlogCard";
 import CreateBlogButton from "../../../components/Buttons/CreateBlogButton";
 import FilterButton from "../../../components/Buttons/FilterButton";
+import SearchFilter from "../../../components/Buttons/SearchFilter";
 import MainHeading from "../../../components/Heading/MainHeading";
 import FeaturesCard from "../../../components/Card/FeaturesCard";
 import { Suspense } from "react";
@@ -39,10 +40,13 @@ export default function Dashboard() {
         
         <MainHeading heading="Trending Blogs" />
 
-        <div className="flex flex-col items-center gap-3 sm:flex-row px-0 md:px-24.5 md:justify-between pt-10">
+        <div className="flex flex-col items-center gap-3 lg:flex-row px-0 md:px-24.5 md:justify-between pt-10">
           <Suspense fallback={<div className="text-center mt-10 text-slate-400 text-sm">Loading...</div>}>
               <FilterButton /> 
           </Suspense>       
+          <Suspense fallback={<div className="text-center mt-10 text-slate-400 text-sm">Loading...</div>}>
+            <SearchFilter />
+          </Suspense>
           <CreateBlogButton />
         </div>
         
