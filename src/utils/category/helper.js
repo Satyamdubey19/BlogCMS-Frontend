@@ -11,6 +11,14 @@ function getBaseUrl() {
   return configuredUrl || "http://localhost:8000";
 }
 
+const DEFAULT_CATEGORIES = [
+  { _id: "default-technology", title: "Technology" },
+  { _id: "default-travel", title: "Travel" },
+  { _id: "default-lifestyle", title: "Lifestyle" },
+  { _id: "default-business", title: "Business" },
+  { _id: "default-education", title: "Education" },
+];
+
 export async function fetchCategories() {
   try {
     const res = await fetch(`${getBaseUrl()}/api/categories`, {
@@ -24,11 +32,17 @@ export async function fetchCategories() {
     }
 
     const data = await res.json();
+    const categories = data?.categories?.map(item => ({
+      _id: item._id,
+      title: item?.title ? item.title.charAt(0).toUpperCase() + item.title.slice(1) : "",
+    })).filter(item => item._id && item.title) || [];
 
-    return data?.categories?.map(item => ({ _id: item._id, title: item?.title ? item.title.charAt(0).toUpperCase() + item.title.slice(1) : "" })) || [];
+    return categories.length ? categories : DEFAULT_CATEGORIES;
 
   } catch (error) {
-    console.error("Error fetching categories:", error.message);
-    return [];
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Using default categories because API categories failed:", error.message);
+    }
+    return DEFAULT_CATEGORIES;
   }
 }
