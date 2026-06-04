@@ -16,8 +16,7 @@ export default function CategoryCard() {
     const getCategories = async () => {
       try {
         setLoading(true);
-        const titles = await fetchCategories(); 
-        console.log(titles, "data-category");
+        const titles = await fetchCategories();
         setCategories(titles);
       } catch (err) {
         setError(err.message);
@@ -42,7 +41,7 @@ export default function CategoryCard() {
       <div className="md:w-1/2 h-56 md:h-auto bg-gradient-to-br from-indigo-500/80 to-purple-700/80 flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-400/20 to-purple-900/40" />
         <div className="relative text-center text-white px-8 z-10">
-          <Image src={categoryIcon3} alt="categoryIcon" width={130} height={130} className="mx-auto mb-5" />
+          <Image src={categoryIcon3} alt="categoryIcon" width={130} height={130} priority loading="eager" className="mx-auto mb-5" />
           <h2 className="text-2xl font-bold">Find What You Love</h2>
           <p className="text-indigo-200 text-sm mt-2">Pick a category to get started</p>
         </div>
